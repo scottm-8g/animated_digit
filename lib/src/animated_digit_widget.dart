@@ -412,6 +412,8 @@ class AnimatedDigitWidget extends StatefulWidget {
   /// ```
   final List<ValueColor>? valueColors;
 
+  final resetToZeroAtValue;
+
   /// see [AnimatedDigitWidget]
   AnimatedDigitWidget({
     Key? key,
@@ -432,6 +434,7 @@ class AnimatedDigitWidget extends StatefulWidget {
     this.autoSize = true,
     this.animateAutoSize = true,
     this.valueColors,
+    this.resetToZeroAtValue = 10,
   })  : assert(separateLength >= 1,
             "@separateLength at least greater than or equal to 1"),
         assert(!(value == null && controller == null),
@@ -731,6 +734,7 @@ class _AnimatedDigitWidgetState extends State<AnimatedDigitWidget>
       loop: widget.loop,
       autoSize: widget.autoSize,
       animateAutoSize: widget.animateAutoSize,
+      flipOverDigit: widget.resetToZeroAtValue,
     );
   }
 
@@ -772,6 +776,8 @@ class _AnimatedSingleWidget extends StatefulWidget {
   /// use animate scale text size scale
   final bool animateAutoSize;
 
+  final int flipOverDigit;
+
   _AnimatedSingleWidget({
     required this.initialValue,
     required this.textStyle,
@@ -783,6 +789,7 @@ class _AnimatedSingleWidget extends StatefulWidget {
     this.loop = false,
     this.autoSize = false,
     this.animateAutoSize = false,
+    this.flipOverDigit = 10,
   }) : super(key: GlobalKey<_AnimatedSingleWidgetState>());
 
   @override
@@ -798,7 +805,7 @@ class _AnimatedSingleWidgetState extends State<_AnimatedSingleWidget> {
     data = widget.singleDigitData;
     currentValue = widget.initialValue;
     _initSize();
-    _animateTo();
+    _animateTo(const Duration(microseconds: 1));
   }
 
   SingleDigitData? data;
@@ -852,7 +859,7 @@ class _AnimatedSingleWidgetState extends State<_AnimatedSingleWidget> {
   /// 设置一个新的值
   void setValue(String newValue) {
     currentValue = newValue;
-    _animateTo();
+    _animateTo(_duration);
   }
 
   /// 是否为非数字的符号
@@ -902,22 +909,22 @@ class _AnimatedSingleWidgetState extends State<_AnimatedSingleWidget> {
   }
 
   /// 动画滚动到当前的数字
-  void _animateTo() {
+  void _animateTo(Duration duration) {
     if (isNumber && oldValue != currentValue) {
       WidgetsBindingx.instance?.addPostFrameCallback((_) {
         if (scrollController.hasClients) {
-          _scrollTo();
+          _scrollTo(duration);
         }
       });
     }
   }
 
   /// 滚动到距离 [scrollOffset]
-  Future<void> _scrollTo() async {
+  Future<void> _scrollTo(Duration duration) async {
     _computeScrollOffset();
     await scrollController.animateTo(
       scrollOffset,
-      duration: _duration,
+      duration: duration,
       curve: _curve,
     );
   }
@@ -929,7 +936,7 @@ class _AnimatedSingleWidgetState extends State<_AnimatedSingleWidget> {
     if (loop) {
       final int? c = int.tryParse(oldValue);
       if (c != null) {
-        final value = c > n ? 10 - c + n : n - c;
+        int value = c > n ? widget.flipOverDigit - c + n : n - c;
         scrollOffset += value * valueSize.height;
       }
     } else {
@@ -991,10 +998,10 @@ class _AnimatedSingleWidgetState extends State<_AnimatedSingleWidget> {
     return ListView.builder(
       padding: EdgeInsets.zero,
       controller: scrollController,
-      itemCount: loop ? null : 10,
+      itemCount: loop ? null : widget.flipOverDigit,
       itemExtent: valueSize.height,
       itemBuilder: (_, i) {
-        final val = loop ? i % 10 : i;
+        final val = loop ? i % widget.flipOverDigit : i;
         return _buildSingleWidget(val.toString());
       },
     );
